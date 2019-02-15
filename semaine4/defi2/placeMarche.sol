@@ -25,12 +25,29 @@ contract PlaceMarche {
         uint reputationMin;
         bytes32 hashUrl;
         address[] candidats;
+        address illustrateurChoisi;
     }
     
     Demande[] demandes;
     mapping(address => string) clientDemande;
     mapping(address => string) commentaires;
     mapping(address => string) illustrateurDemande;
+    
+    uint256 VALEUR_MAX = 2**256 - 1;
+    
+    function indexDemande(string memory _tache) public returns(uint index){
+        for(uint i=0; i<demandes.length; i++){
+          if(compareStrings(demandes[i].tache, _tache)) {  
+              return i;
+           }
+       }
+       return VALEUR_MAX;
+    }
+    
+    function detailDemande(uint index) public returns (Demande memory){
+        require(index != VALEUR_MAX);
+        return demandes[index];
+    }
     
     function estAdmin (address _participant) public view returns (bool){
         for(uint i=0; i<administateurs.length; i++){
@@ -75,74 +92,70 @@ contract PlaceMarche {
     }
     
     function reputationDemande(string memory _tache) public view returns (uint){
-        for(uint i=0; i< demandes.length; i++){
-           if (produireHash(demandes[i].tache) == produireHash(_tache)){return demandes[i].reputationMin;} 
-        } 
-        return 0;
+        Demande memory demande = detailDemande(indexDemande(_tache));
+        return demande.reputationMin;
+        
     }
     
     function postuler(string memory _tache) public {
-        require(reputationDemande(_tache) <= reputation[msg.sender]);
-        for(uint i=0; i<demandes.length; i++){
-          if(produireHash(demandes[i].tache) == produireHash(_tache)) {  
-              demandes[i].candidats.push(msg.sender);
-           }
-       }
+        require( estBanni(msg.sender) == false," Address Bannie");
+        require(reputationDemande(_tache) <= reputation[msg.sender],"Reputation min requise");
+        Demande memory demande = detailDemande(indexDemande(_tache));
+        require(demande.etatDemande == Etat.OUVERTE,"Etat doit etre Ouvert");
+        demande.candidats.push(msg.sender);
+        job._candidates.push(msg.sender);   
     }
     
     function produireHash(string memory _tache) pure public returns(bytes32) {
         keccak256(abi.encodePacked(_tache));
    }
+   function compareStrings(string memory a,string  memory b) public pure returns (bool){
+       if (produireHash(a) == produireHash(b)) {return true;}
+       else {return false;}
+   }
     
    function accepterOffre(string memory _tache, address _illustrateur) public {
-       //require()  est le client de la demande
-       for(uint i=0; i<demandes.length; i++){
-          if(produireHash(demandes[i].tache) == produireHash(_tache)) {  
-              demandes[i].etatDemande = Etat.ENCOURS;
-              demandes[i].dateAcceptation = now;
-              illustrateurDemande[_illustrateur] = _tache;
-           }
-       }
+       require(compareStrings(clientDemande[msg.sender], _tache), "Est Client");
+       Demande memory demande = detailDemande(indexDemande(_tache));
+       demande.etatDemande = Etat.ENCOURS;
+       demande.dateAcceptation = now;
+       demande.illustrateurChoisi = _illustrateur;
+       
     }
    
-   function livraison(string memory _tache, bytes32 _hashUrl) public payable{
-       require( produireHash(illustrateurDemande[msg.sender]) == produireHash(_tache), "Est le bon  illustrateur");
-       for(uint i=0; i< demandes.length; i++){
-           if (produireHash(demandes[i].tache) == produireHash(_tache)){
-               demandes[i].hashUrl = _hashUrl;
-               demandes[i].etatDemande = Etat.FERMEE;
-               demandes[i].dateCloture = now;
-               msg.sender.transfer(demandes[i].remuneration);
-           } 
-        }
-        reputation[msg.sender] = reputation[msg.sender].add(1);
+   function livraison(string memory _tache, bytes32 _hashUrl) public {
+       Demande memory demande = detailDemande(indexDemande(_tache));
+       require(demande.illustrateurChoisi == msg.sender);
+       demande.hashUrl = _hashUrl;
+       demande.etatDemande = Etat.FERMEE;
+       demande.dateCloture = now;
+   }
+    
+    function validerLivraison(string memory _tache) public payable{
+        require(compareStrings(clientDemande[msg.sender], _tache),"N est pas le bon client");
+        Demande memory demande = detailDemande(indexDemande(_tache));
+        require(demande.dateCloture + now <= 7 days, "Delai de validation depassé");
+        reputation[demande.illustrateurChoisi] = reputation[demande.illustrateurChoisi].add(1);
+        msg.sender.transfer(demande.remuneration);
     }
    
    function sanction(string memory _tache, address _illustrateur, uint nbPoint) public {
-       require( produireHash(clientDemande[msg.sender]) == produireHash(_tache),"Est le bon client" ); 
-       require( produireHash(illustrateurDemande[_illustrateur]) == produireHash(_tache), "Est le bon  illustrateur");
+       require( compareStrings(clientDemande[msg.sender], _tache),"N est pas le bon client" ); 
+       Demande memory demande = detailDemande(indexDemande(_tache));
+       require(demande.illustrateurChoisi == _illustrateur);
+       require(now.sub(demande.dateAcceptation) > demande.delai, "Delai de realisation depasse"); 
+       reputation[demande.illustrateurChoisi] = reputation[demande.illustrateurChoisi].sub(nbPoint);
        
-       for(uint i=0; i<demandes.length; i++){
-          if(produireHash(demandes[i].tache) == produireHash(_tache)) {  
-            require(now.sub(demandes[i].dateAcceptation) > demandes[i].delai, "Delai de realisation depasse");  
-            reputation[_illustrateur] = reputation[_illustrateur].sub(nbPoint);  
-           }
-       }
    }
    
    
    function ajoutCommentaire(address _entite, string memory _commentaire,string memory _niveauSatisfaction, string memory _tache) public {
-    require((produireHash(clientDemande[msg.sender]) == produireHash(_tache)) || (produireHash(illustrateurDemande[msg.sender]) == produireHash(_tache)),"Client ou Illustrateur");
-     for(uint i=0; i< demandes.length; i++){
-         if(produireHash(demandes[i].tache) == produireHash(_tache)){
-            require(now < demandes[i].dateCloture.add(delaiCommentaire),"Delai depassee");
-            commentaires[_entite] = _commentaire;
-            if (produireHash(_niveauSatisfaction) == produireHash("mauvais")){reputation[_entite] = reputation[_entite].sub(2);}
-            if (produireHash(_niveauSatisfaction) == produireHash("bon")){reputation[_entite] = reputation[_entite].add(2);}
-            if (produireHash(_niveauSatisfaction) == produireHash("très bon")){reputation[_entite] = reputation[_entite].add(4);}
-         }
-         
-     }    
-     
+        Demande memory demande = detailDemande(indexDemande(_tache));
+        require((compareStrings(clientDemande[msg.sender], _tache) && now < demande.dateCloture.add(delaiCommentaire)) || demande.illustrateurChoisi== _entite);
+        commentaires[_entite] = _commentaire;
+        if (compareStrings(_niveauSatisfaction,"mauvais")){reputation[_entite] = reputation[_entite].sub(2);}
+        if (compareStrings(_niveauSatisfaction,"bon")){reputation[_entite] = reputation[_entite].add(2);}
+        if (compareStrings(_niveauSatisfaction,"très bon")){reputation[_entite] = reputation[_entite].add(4);}
+        
    }
 }
