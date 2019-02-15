@@ -103,7 +103,6 @@ contract PlaceMarche {
         Demande memory demande = detailDemande(indexDemande(_tache));
         require(demande.etatDemande == Etat.OUVERTE,"Etat doit etre Ouvert");
         demande.candidats.push(msg.sender);
-        job._candidates.push(msg.sender);   
     }
     
     function produireHash(string memory _tache) pure public returns(bytes32) {
