@@ -31,11 +31,19 @@ contract PlaceMarche {
     Demande[] demandes;
     mapping(address => string) clientDemande;
     mapping(address => string) commentaires;
-    mapping(address => string) illustrateurDemande;
+    mapping(address => string) illustrateurService;
     
     uint256 VALEUR_MAX = 2**256 - 1;
     
-    function indexDemande(string memory _tache) public returns(uint index){
+    function produireHash(string memory _tache) pure public returns(bytes32) {
+        keccak256(abi.encodePacked(_tache));
+    }
+    function compareStrings(string memory a,string  memory b) public pure returns (bool){
+       if (produireHash(a) == produireHash(b)) {return true;}
+       else {return false;}
+    }
+    
+    function indexDemande(string memory _tache) public view returns(uint index){
         for(uint i=0; i<demandes.length; i++){
           if(compareStrings(demandes[i].tache, _tache)) {  
               return i;
@@ -44,7 +52,7 @@ contract PlaceMarche {
        return VALEUR_MAX;
     }
     
-    function detailDemande(uint index) public returns (Demande memory){
+    function detailDemande(uint index) public view returns (Demande memory){
         require(index != VALEUR_MAX);
         return demandes[index];
     }
@@ -100,55 +108,47 @@ contract PlaceMarche {
     function postuler(string memory _tache) public {
         require( estBanni(msg.sender) == false," Address Bannie");
         require(reputationDemande(_tache) <= reputation[msg.sender],"Reputation min requise");
-        Demande memory demande = detailDemande(indexDemande(_tache));
-        require(demande.etatDemande == Etat.OUVERTE,"Etat doit etre Ouvert");
-        demande.candidats.push(msg.sender);
+        uint index = indexDemande(_tache);
+        require(demandes[index].etatDemande == Etat.OUVERTE,"Etat doit etre Ouvert");
+        demandes[index].candidats.push(msg.sender);
     }
     
-    function produireHash(string memory _tache) pure public returns(bytes32) {
-        keccak256(abi.encodePacked(_tache));
-   }
-   function compareStrings(string memory a,string  memory b) public pure returns (bool){
-       if (produireHash(a) == produireHash(b)) {return true;}
-       else {return false;}
-   }
     
    function accepterOffre(string memory _tache, address _illustrateur) public {
        require(compareStrings(clientDemande[msg.sender], _tache), "Est Client");
-       Demande memory demande = detailDemande(indexDemande(_tache));
-       demande.etatDemande = Etat.ENCOURS;
-       demande.dateAcceptation = now;
-       demande.illustrateurChoisi = _illustrateur;
+       uint index = indexDemande(_tache);
+       demandes[index].etatDemande = Etat.ENCOURS;
+       demandes[index].dateAcceptation = now;
+       demandes[index].illustrateurChoisi = _illustrateur;
        
     }
    
    function livraison(string memory _tache, bytes32 _hashUrl) public {
-       Demande memory demande = detailDemande(indexDemande(_tache));
-       require(demande.illustrateurChoisi == msg.sender);
-       demande.hashUrl = _hashUrl;
-       demande.etatDemande = Etat.FERMEE;
-       demande.dateCloture = now;
+       uint index = indexDemande(_tache);
+       require(demandes[index].illustrateurChoisi == msg.sender);
+       demandes[index].hashUrl = _hashUrl;
+       demandes[index].etatDemande = Etat.FERMEE;
+       demandes[index].dateCloture = now;
    }
     
     function validerLivraison(string memory _tache) public payable{
         require(compareStrings(clientDemande[msg.sender], _tache),"N est pas le bon client");
-        Demande memory demande = detailDemande(indexDemande(_tache));
-        require(demande.dateCloture + now <= 7 days, "Delai de validation depassé");
-        reputation[demande.illustrateurChoisi] = reputation[demande.illustrateurChoisi].add(1);
-        msg.sender.transfer(demande.remuneration);
+        uint index = indexDemande(_tache);
+        require(demandes[index].dateCloture + now <= 7 days, "Delai de validation depassé");
+        reputation[demandes[index].illustrateurChoisi] = reputation[demandes[index].illustrateurChoisi].add(1);
+        msg.sender.transfer(demandes[index].remuneration);
     }
    
    function sanction(string memory _tache, address _illustrateur, uint nbPoint) public {
        require( compareStrings(clientDemande[msg.sender], _tache),"N est pas le bon client" ); 
-       Demande memory demande = detailDemande(indexDemande(_tache));
-       require(demande.illustrateurChoisi == _illustrateur);
-       require(now.sub(demande.dateAcceptation) > demande.delai, "Delai de realisation depasse"); 
-       reputation[demande.illustrateurChoisi] = reputation[demande.illustrateurChoisi].sub(nbPoint);
+       uint index = indexDemande(_tache);
+       require(demandes[index].illustrateurChoisi == _illustrateur);
+       require(now.sub(demandes[index].dateAcceptation) > demandes[index].delai, "Delai de realisation depasse"); 
+       reputation[demandes[index].illustrateurChoisi] = reputation[demandes[index].illustrateurChoisi].sub(nbPoint);
        
    }
    
-   
-   function ajoutCommentaire(address _entite, string memory _commentaire,string memory _niveauSatisfaction, string memory _tache) public {
+   function ajouterCommentaire(address _entite, string memory _commentaire,string memory _niveauSatisfaction, string memory _tache) public {
         Demande memory demande = detailDemande(indexDemande(_tache));
         require((compareStrings(clientDemande[msg.sender], _tache) && now < demande.dateCloture.add(delaiCommentaire)) || demande.illustrateurChoisi== _entite);
         commentaires[_entite] = _commentaire;
@@ -156,5 +156,9 @@ contract PlaceMarche {
         if (compareStrings(_niveauSatisfaction,"bon")){reputation[_entite] = reputation[_entite].add(2);}
         if (compareStrings(_niveauSatisfaction,"très bon")){reputation[_entite] = reputation[_entite].add(4);}
         
+   }
+   function ajouterOffreService(string memory _offre) public {
+       require(estBanni(msg.sender) == false,"Illustrateur banni");
+       illustrateurService[msg.sender] = _offre;
    }
 }
