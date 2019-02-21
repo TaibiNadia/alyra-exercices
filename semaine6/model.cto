@@ -1,0 +1,41 @@
+namespace fr.laposte
+ 
+ enum TypeColis{
+ o LETTRE_RECOMANDEE
+ o DOCUMENTS
+ o PETIT_PAQUET
+ o CARTON
+ }
+ 
+ enum Etat{
+ o BON 
+ o ABIME
+ o CASSE
+ }
+ 
+ participant Personne identified by nom{
+ o String nom
+ --> Address adr
+ }
+ 
+participant CentreTri identified by nom{
+o String nom
+ --> Address adr
+}
+
+asset Colis identified by identifiant{
+o TypeColis type
+o String identifiant
+o Etat etat
+--> Personne emetteur
+--> Personne destinataire
+--> Address localisation
+}
+
+asset Address identified by id{
+o String id
+}
+transaction Deplacement {
+ --> Colis colis
+ --> Address newAddress
+}
