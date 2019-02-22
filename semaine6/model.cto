@@ -13,15 +13,16 @@ namespace fr.laposte
  o CASSE
  }
  
- participant Personne identified by nom{
+ abstract participant Personne identified by nom{
  o String nom
  --> Address adr
  }
+participant emetteur extends Personne{}
+
+participant recepteur extends Personne{}
  
-participant CentreTri identified by nom{
-o String nom
- --> Address adr
-}
+participant centreTri extends Personne {}
+
 
 asset Colis identified by identifiant{
 o TypeColis type
@@ -29,13 +30,31 @@ o String identifiant
 o Etat etat
 --> Personne emetteur
 --> Personne destinataire
---> Address localisation
+--> Personne centreTri
 }
 
 asset Address identified by id{
 o String id
 }
-transaction Deplacement {
+
+abstract transaction Deplacement {
  --> Colis colis
- --> Address newAddress
+ --> Address emetteur
+}
+
+transaction Distribution extends Deplacement {
+  --> Address destinataire
+}
+
+transaction Transport extends Deplacement {
+  --> Address centreTri
+}
+
+transaction ModifierEtat {
+  -->Colis colis
+  o Etat newEtat
+}
+
+event Distribue {
+  -->Colis colis
 }
