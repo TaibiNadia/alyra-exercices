@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <meta http-equiv="X-UA-Compatible" content="ie=edge">
+ <title>IPFS Chargement images</title>
+ </head>
+  <body>
+
+<h1>Chargement d'image dans IPFS</h1>
+<input type="file" id="fichierImage">
+<button onclick="charger()">Charger image</button>
+<a id="lien"></a>
+<br><br>
+<button onclick="recupererDerniereImage()">Derniere image</button>
+<img src="" alt="" id="imageRecupere" height="500px">
+<div id="imgtxt"></div>
+<script type="text/javascript" src="index.js"></script>
+<script src = "https://unpkg.com/ipfs-http-client/dist/index.min.js"></script>  
+<script src="https://cdn.ethers.io/scripts/ethers-v4.min.js" charset="utf-8" type="text/javascript">
+  </script> 
+
+
+ </body>
+</html>
