@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Plce de Marché bitfinex</title>
+</head>
+<body>
+<script type="text/javascript">
+const url = 'https://api.bitfinex.com/v1/pubticker/btceur';
+fetch(url)
+.then((resp) => resp.json())
+.then(function(myJson) {
+ const lastPrice = myJson.last_price;
+ document.getElementById('lastPrice').innerHTML = lastPrice;
+  })
+  .catch(function(error) {
+    console.log(JSON.stringify(error));
+  });   
+</script>
+  <h1>Dernier Prix</h1>
+  <ul id="lastPrice"></ul>
+</body>
+</html>
