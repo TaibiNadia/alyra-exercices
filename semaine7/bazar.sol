@@ -3,7 +3,7 @@ import "github.com/OpenZeppelin/openzeppelin-solidity/contracts/math/SafeMath.so
 import "github.com/OpenZeppelin/openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "github.com/OpenZeppelin/openzeppelin-solidity/ERC721/ERC721.sol";
 
-contract  bazar is NFT{
+contract  bazar {
 ERC721 public nftAddress;    
 address public addressObjetsMagiques;
 uint256 public dureeEnchere;
@@ -76,4 +76,5 @@ function recupererObjet(uint indice) public {
 }
 
 }
+ 
     
