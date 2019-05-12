@@ -14,7 +14,10 @@ class Content extends React.Component {
       <div>
         
 
-        <Table goods={this.props.goods} />
+        <Table goods={this.props.goods} 
+           message={this.props.message}
+           castSelectGood={this.props.castSelectGood}
+           castSentGood={this.props.castSentGood}/>
         <hr/>
         <Form 
           good={this.props.good}
